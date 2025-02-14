@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const session = require('express-session')
 const customer_routes = require('./router/auth_users.js').authenticated;
 const genl_routes = require('./router/general.js').general;
+const SECRET_KEY = "your_secret_key";
 
 const app = express();
 
@@ -10,23 +11,24 @@ app.use(express.json());
 
 app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
 
-app.use("/customer/auth/*", function auth(req,res,next){
-//Write the authenication mechanism here
-if (req.session.authorization) {
-    let token = req.session.authorization['accessToken'];
-    // Verify JWT token
-    jwt.verify(token, "access", (err, user) => {
-        if (!err) {
-            req.user = user;
-            next(); // Proceed to the next middleware
-        } else {
-            return res.status(403).json({ message: "User not authenticated" });
-        }
-    });
-    } else {
+app.use("/customer/auth/*", function auth(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
         return res.status(403).json({ message: "User not logged in" });
     }
+
+    const token = authHeader.split(" ")[1]; // Extrae solo el token (sin "Bearer")
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: "User not authenticated" });
+        }
+        req.user = user; // Guarda los datos del usuario en req.user
+        next(); // Pasa al siguiente middleware
+    });
 });
+
  
 const PORT =5000;
 
